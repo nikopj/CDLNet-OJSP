@@ -1,0 +1,43 @@
+{
+"type": "GDLNet",
+"model": {
+	"K": 5,
+	"M": 16,
+	"P": 5,
+	"s": 1,
+	"C": 1,
+	"order": 3,
+	"t0": 1e-2,
+	"adaptive": false
+},
+"paths": {
+	"save": "networks/CDLNet-test",
+	"ckpt": null
+},
+"train": {
+	"loaders": {
+		"batch_size": 1,
+		"crop_size": 64,
+		"trn_path_list": ["dataset/CBSD432"],
+		"val_path_list": ["dataset/Kodak"],
+		"tst_path_list": ["dataset/CBSD68"],
+		"load_color": false
+	},
+	"fit": {
+		"epochs": 20,
+		"noise_std": 25,
+		"val_freq": 2,
+		"save_freq": 5,
+		"backtrack_thresh": 2,
+		"verbose": true,
+		"clip_grad": 5e-2
+	},
+	"opt": {
+		"lr": 1e-3
+	},
+	"sched": {
+		"gamma": 0.95,
+		"step_size": 50
+	}
+}
+}
