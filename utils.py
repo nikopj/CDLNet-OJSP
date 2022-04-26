@@ -10,6 +10,14 @@ def img_load(path, gray=False):
 		return to_tensor(Image.open(path).convert('L'))[None,...]
 	return to_tensor(Image.open(path))[None,...]
 
+def gen_bayer_mask(x):
+    m = torch.zeros_like(x)
+    m[:,0,0::2,0::2] = 1 # R
+    m[:,1,0::2,1::2] = 1 # G1
+    m[:,1,1::2,0::2] = 1 # G2
+    m[:,2,1::2,1::2] = 1 # B
+    return m
+
 def awgn(input, noise_std):
 	""" Additive White Gaussian Noise
 	y: clean input image

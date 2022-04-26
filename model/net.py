@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from model.solvers import power_method, uball_project
-from model.utils   import pre_process, post_process
+from model.utils   import pre_process, post_process, calc_pad_2D, unpad
 from model.gabor   import ConvAdjoint2dGabor
 
 def ST(x,t):
@@ -74,10 +74,10 @@ class CDLNet(nn.Module):
             self.A[k].weight.data = uball_project(self.A[k].weight.data)
             self.B[k].weight.data = uball_project(self.B[k].weight.data)
 
-    def forward(self, y, sigma=None):
+    def forward(self, y, sigma=None, mask=1):
         """ LISTA + D w/ noise-adaptive thresholds
         """ 
-        yp, params = pre_process(y, self.s)
+        yp, params, mask = pre_process(y, self.s, mask=mask)
 
         # THRESHOLD SCALE-FACTOR c
         c = 0 if sigma is None or not self.adaptive else sigma/255.0
@@ -85,21 +85,21 @@ class CDLNet(nn.Module):
         # LISTA
         z = ST(self.A[0](yp), self.t[0,:1] + c*self.t[0,1:2])
         for k in range(1, self.K):
-            z = ST(z - self.A[k](self.B[k](z) - yp), self.t[k,:1] + c*self.t[k,1:2])
+            z = ST(z - self.A[k](mask*self.B[k](z) - yp), self.t[k,:1] + c*self.t[k,1:2])
 
         # DICTIONARY SYNTHESIS
         xphat = self.D(z)
         xhat  = post_process(xphat, params)
         return xhat, z
 
-    def forward_generator(self, y, sigma=None):
+    def forward_generator(self, y, sigma=None, mask=1):
         """ same as forward but yeilds intermediate sparse codes
         """
-        yp, params = pre_process(y, self.s)
+        yp, params, mask = pre_process(y, self.s, mask=mask)
         c = 0 if sigma is None or not self.adaptive else sigma/255.0
         z = ST(self.A[0](yp), self.t[0,:1] + c*self.t[0,1:2]); yield z
         for k in range(1, self.K):
-            z = ST(z - self.A[k](self.B[k](z) - yp), self.t[k,:1] + c*self.t[k,1:2]); yield z
+            z = ST(z - self.A[k](mask*self.B[k](z) - yp), self.t[k,:1] + c*self.t[k,1:2]); yield z
         xphat = self.D(z)
         xhat  = post_process(xphat, params)
         yield xhat
@@ -194,10 +194,10 @@ class GDLNet(nn.Module):
         """
         self.t.clamp_(0.0) 
 
-    def forward(self, y, sigma=None):
+    def forward(self, y, sigma=None, mask=1):
         """ LISTA + D w/ noise-adaptive thresholds
         """ 
-        yp, params = pre_process(y, self.s)
+        yp, params, mask = pre_process(y, self.s, mask=mask)
 
         # THRESHOLD SCALE-FACTOR c
         c = 0 if sigma is None or not self.adaptive else sigma/255.0
@@ -205,22 +205,65 @@ class GDLNet(nn.Module):
         # LISTA
         z = ST(self.A[0].T(yp), self.t[0,:1] + c*self.t[0,1:2])
         for k in range(1, self.K):
-            z = ST(z - self.A[k].T(self.B[k](z) - yp), self.t[k,:1] + c*self.t[k,1:2])
+            z = ST(z - self.A[k].T(mask*self.B[k](z) - yp), self.t[k,:1] + c*self.t[k,1:2])
 
         # DICTIONARY SYNTHESIS
         xphat = self.D(z)
         xhat  = post_process(xphat, params)
         return xhat, z
 
-    def forward_generator(self, y, sigma=None):
+    def forward_generator(self, y, sigma=None, mask=1):
         """ same as forward but yeilds intermediate sparse codes
         """
-        yp, params = pre_process(y, self.s)
+        yp, params, mask = pre_process(y, self.s, mask=mask)
         c = 0 if sigma is None or not self.adaptive else sigma/255.0
-        z = ST(self.A.T[0](yp), self.t[0,:1] + c*self.t[0,1:2]); yield z
+        z = ST(self.A[0].T(yp), self.t[0,:1] + c*self.t[0,1:2]); yield z
         for k in range(1, self.K):
-            z = ST(z - self.A[k].T(self.B[k](z) - yp), self.t[k,:1] + c*self.t[k,1:2]); yield z
+            z = ST(z - self.A[k].T(mask*self.B[k](z) - yp), self.t[k,:1] + c*self.t[k,1:2]); yield z
         xphat = self.D(z)
         xhat  = post_process(xphat, params)
         yield xhat
+
+class DnCNN(nn.Module):
+	"""
+	DnCNN implementation taken from github.com/SaoYan/DnCNN-PyTorch
+	"""
+	def __init__(self, Co=1, Ci=1, K=17, M=64, P=3):
+		super(DnCNN, self).__init__()
+		pad = (P-1)//2
+		layers = []
+		layers.append(nn.Conv2d(Ci, M, P, padding=pad, bias=True))
+		layers.append(nn.ReLU(inplace=True))
+
+		for _ in range(K-2):
+			layers.append(nn.Conv2d(M, M, P, padding=pad, bias=False))
+			layers.append(nn.BatchNorm2d(M))
+			layers.append(nn.ReLU(inplace=True))
+
+		layers.append(nn.Conv2d(M, Co, P, padding=pad, bias=True))
+		self.dncnn = nn.Sequential(*layers)
+
+	def project(self):
+		return
+
+	def forward(self, y, *args, **kwargs):
+		n = self.dncnn(y)
+		return y-n, n
+
+class FFDNet(DnCNN):
+	""" Implementation of FFDNet.
+	"""
+	def __init__(self, C=1, K=17, M=64, P=3):
+		super(FFDNet, self).__init__(Ci=4*C+1, Co=4*C, K=K, M=M, P=P)
+	
+	def forward(self, y, sigma_n, **kwargs):
+		pad = calc_pad_2D(*y.shape[2:], 2)
+		yp  = F.pad(y, pad, mode='reflect')
+		noise_map = (sigma_n/255.0)*torch.ones(1,1,yp.shape[2]//2,yp.shape[3]//2,device=y.device)
+		z = F.pixel_unshuffle(yp, 2)
+		z = torch.cat([z, noise_map], dim=1)
+		z = self.dncnn(z)
+		xhatp = F.pixel_shuffle(z, 2)
+		xhat  = unpad(xhatp, pad)
+		return xhat, noise_map
 

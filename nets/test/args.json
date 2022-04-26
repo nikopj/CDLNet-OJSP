@@ -1,0 +1,45 @@
+{
+    "model": {
+        "C": 1,
+        "K": 8,
+        "M": 32
+    },
+    "paths": {
+        "ckpt": "nets/test/net.ckpt",
+        "save": "nets/test"
+    },
+    "train": {
+        "fit": {
+            "backtrack_thresh": 2,
+            "clip_grad": 0.05,
+            "demosaic": false,
+            "epochs": 20,
+            "noise_std": 25,
+            "save_freq": 5,
+            "val_freq": 5,
+            "verbose": true
+        },
+        "loaders": {
+            "batch_size": 32,
+            "crop_size": 64,
+            "load_color": false,
+            "trn_path_list": [
+                "dataset/CBSD432"
+            ],
+            "tst_path_list": [
+                "dataset/CBSD68"
+            ],
+            "val_path_list": [
+                "dataset/Kodak"
+            ]
+        },
+        "opt": {
+            "lr": 0.0005
+        },
+        "sched": {
+            "gamma": 0.95,
+            "step_size": 50
+        }
+    },
+    "type": "FFDNet"
+}

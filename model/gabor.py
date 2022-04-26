@@ -43,7 +43,7 @@ class ConvAdjoint2dGabor(nn.Module):
         self._pad = (p,p,p,p)
         self._output_padding = nn.ConvTranspose2d(1,1,ks,stride=self.stride)._output_padding
         
-    def weight(self, transpose=False):
+    def get_filter(self, transpose=False):
         if transpose:
             w0, psi = -self.w0, -self.psi
         else:
@@ -52,7 +52,7 @@ class ConvAdjoint2dGabor(nn.Module):
 
     def T(self, x):
         pad_x = F.pad(x, self._pad, mode='constant')
-        return F.conv2d(pad_x, self.weight(transpose=True), stride=self.stride)
+        return F.conv2d(pad_x, self.get_filter(transpose=True), stride=self.stride)
 
     def forward(self, x):
         output_size = (x.shape[0], x.shape[1], self.stride*x.shape[2], self.stride*x.shape[3])
@@ -61,7 +61,7 @@ class ConvAdjoint2dGabor(nn.Module):
                                   (self._pad[0], self._pad[0]),
                                   (self.ks, self.ks))
 
-        return F.conv_transpose2d(x, self.weight(),
+        return F.conv_transpose2d(x, self.get_filter(),
                                   padding = self._pad[0],
                                   stride  = self.stride,
                                   output_padding = op)

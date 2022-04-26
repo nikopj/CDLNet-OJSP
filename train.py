@@ -5,9 +5,9 @@ from pprint import pprint
 import numpy as np
 import torch
 import torch.nn as nn
-from model.net import CDLNet, GDLNet
+from model.net import CDLNet, GDLNet, DnCNN, FFDNet
 from data import getFitLoaders
-from utils import awgn
+from utils import awgn, gen_bayer_mask
 
 def main(args):
     """ Given argument dictionary, load data, initialize model, and fit model.
@@ -37,6 +37,7 @@ def fit(net, opt, loaders,
         start_epoch = 1,
         clip_grad = 1,
         noise_std = 25,
+        demosaic = False,
         verbose = True,
         val_freq  = 1,
         save_freq = 1,
@@ -73,11 +74,13 @@ def fit(net, opt, loaders,
             t = tqdm(iter(loaders[phase]), desc=phase.upper()+'-E'+str(epoch), dynamic_ncols=True)
             for itern, batch in enumerate(t):
                 batch = batch.to(device)
+                mask = gen_bayer_mask(batch) if demosaic else 1
                 noisy_batch, sigma_n = awgn(batch, phase_nstd)
+                obsrv_batch = mask * noisy_batch
                 opt.zero_grad()
 
                 with torch.set_grad_enabled(phase == 'train'):
-                    batch_hat, _ = net(noisy_batch, sigma_n)
+                    batch_hat, _ = net(obsrv_batch, sigma_n, mask=mask)
                     loss = torch.mean((batch - batch_hat)**2)
 
                     if phase == 'train':
@@ -170,10 +173,14 @@ def init_model(args, device=torch.device("cpu")):
     model_type, model_args, train_args, paths = [args[item] for item in ['type','model','train','paths']]
     init = False if paths['ckpt'] is not None else True
 
-    if model_type == "CDLNet":
+    if model_type in "CDLNet":
         net = CDLNet(**model_args, init=init)
     elif model_type == "GDLNet":
         net = GDLNet(**model_args, init=init)
+    elif model_type == "DnCNN":
+        net = DnCNN(**model_args)
+    elif model_type == "FFDNet":
+        net = FFDNet(**model_args)
     else:
         raise NotImplementedError
 

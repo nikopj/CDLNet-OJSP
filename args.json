@@ -1,16 +1,13 @@
 {
-"type": "CDLNet",
+"type": "DnCNN",
 "model": {
-	"K": 30,
-	"M": 169,
-	"P": 7,
-	"s": 2,
-	"C": 1,
-	"t0": 0,
-	"adaptive": false
+	"K": 9,
+	"M": 32,
+	"Ci": 1,
+	"Co": 1
 },
 "paths": {
-	"save": "networks/CDLNet-test",
+	"save": "nets/test",
 	"ckpt": null
 },
 "train": {
@@ -29,10 +26,11 @@
 		"save_freq": 5,
 		"backtrack_thresh": 2,
 		"verbose": true,
-		"clip_grad": 5e-2
+		"clip_grad": 5e-2,
+		"demosaic": false
 	},
 	"opt": {
-		"lr": 5e-4
+		"lr": 1e-3
 	},
 	"sched": {
 		"gamma": 0.95,

@@ -16,11 +16,10 @@ from torchvision.utils import save_image, make_grid
 from tqdm import tqdm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from model.nle import noise_level
+import model
 import utils, data, train
 
 import argparse
-
 parser = argparse.ArgumentParser()
 parser.add_argument("args_fn", type=str, help="Path to args.json file.", default="args.json")
 parser.add_argument("--test", type=str, help="Run model over specified test set (provided path to image dir).", default=None)
@@ -33,6 +32,7 @@ parser.add_argument("--thresholds", action="store_true", help="Plot network thre
 parser.add_argument("--filters", action="store_true", help="Save network A,B filterbanks.")
 parser.add_argument("--save_dir", type=str, help="Where to save analyze results.", default=None)
 parser.add_argument("--color", action="store_true", help="Use color images.")
+parser.add_argument("--demosaic", action="store_true", help="Demosaicing problem.")
 
 ARGS = parser.parse_args()
 
@@ -61,8 +61,7 @@ def main(model_args):
             dictionary(net)
 
         if ARGS.passthrough is not None:
-            print(ARGS.noise_level)
-            passthrough(net, ARGS.passthrough, ARGS.noise_level, blind=ARGS.blind, device=device)
+            passthrough(net, ARGS.passthrough, ARGS.noise_level, blind=ARGS.blind, demosaic=ARGS.demosaic, device=device, color=ARGS.color)
 
         if ARGS.thresholds:
             thresholds(net)
@@ -105,7 +104,7 @@ def test(net, loader, noise_std=25, blind=False, device=torch.device('cpu')):
                 t0 = time.time()
                 if net.adaptive:
                     if blind:
-                        s = 255 * nle.noiseLevel(y, method=blind)
+                        s = 255 * model.nle.noiseLevel(y, method=blind)
                 else:
                     s = None
                 xhat, _ = net(y, s)
@@ -215,10 +214,15 @@ def dictionary(net):
     """ Saves net dictionary's filters, frequency-response.
     """
     print("--------- dictionary ---------")
-    if net.s > 1:
-        D = net.D.weight.cpu()
+    if type(net) is model.net.CDLNet:
+        if net.s > 1:
+            D = net.D.weight.cpu()
+        else:
+            D = net.D.weight.cpu().permute(1,0,2,3)
+    elif type(net) is model.net.GDLNet:
+        D = net.D.get_filter().cpu()
     else:
-        D = net.D.weight.cpu().permute(1,0,2,3)
+        raise NotImplementedError
 
     n = int(np.ceil(np.sqrt(net.M)))
 
@@ -233,7 +237,7 @@ def dictionary(net):
     print(f"Saving dictionary magnitude response to {fn} ...")
     save_image(X.abs(), fn, nrow=n, normalize=True, scale_each=True, padding=10, pad_value=1)
 
-def passthrough(net, img_path, noise_std, device=torch.device('cpu'), blind=False, gray=True):
+def passthrough(net, img_path, noise_std, device=torch.device('cpu'), blind=False, color=False, demosaic=False):
     """ Save passthrough of single image
     """
     print("--------- passthrough ---------")
@@ -244,13 +248,15 @@ def passthrough(net, img_path, noise_std, device=torch.device('cpu'), blind=Fals
         os.makedirs(save_dir, exist_ok=True)
 
     print(f"using {img_path}...")
-    x = utils.img_load(img_path, gray=gray).to(device)
+    x = utils.img_load(img_path, gray=not color).to(device)
     y, sigma = utils.awgn(x, noise_std)
+    m = utils.gen_bayer_mask(y) if demosaic else 1
+    y = m*y
 
     print(f"noise_std = {sigma}")
     if net.adaptive:
         if blind is not None and blind is not False:
-            sigma = 255 * noise_level(y, method=blind)
+            sigma = 255 * model.nle.noise_level(y, method=blind)
             print(f"sigma_hat = {sigma.flatten().item():.3f}")
         else:
             print(f"using GT sigma.")
@@ -258,8 +264,8 @@ def passthrough(net, img_path, noise_std, device=torch.device('cpu'), blind=Fals
         sigma = None
 
     n = round(np.sqrt(net.M))
-    fg = net.forward_generator(y, sigma)
-    yp = y - y.mean()
+    fg = net.forward_generator(y, sigma, mask=m)
+    yp, params, m = model.utils.pre_process(y, net.s, mask=m)
 
     for (i, xz) in enumerate(fg):
         if not ARGS.save:
