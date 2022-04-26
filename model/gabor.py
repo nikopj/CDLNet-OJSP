@@ -27,7 +27,6 @@ def gabor_kernel(a, w0, psi, ks):
         torch.cos(torch.sum(w0*(x-x0), dim=-1) + psi)
     return h
 
-
 class ConvAdjoint2dGabor(nn.Module):
     """ Convolution with a Gabor kernel
     """

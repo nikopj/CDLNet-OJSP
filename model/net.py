@@ -54,8 +54,8 @@ class CDLNet(nn.Module):
 
             # spectral normalization (note: D is alised to B[0])
             for k in range(K):
-                self.A[k].weight.data = self.A[k].weight.data / np.sqrt(L)
-                self.B[k].weight.data = self.B[k].weight.data / np.sqrt(L)
+                self.A[k].weight.data /= np.sqrt(L)
+                self.B[k].weight.data /= np.sqrt(L)
 
         # set parameters
         self.K = K
@@ -120,7 +120,7 @@ class GDLNet(nn.Module):
                  init = True):     # False -> use power-method for weight init
         super(GDLNet, self).__init__()
         
-        # -- OPERATOR INIT --
+        # -- operator init --
         self.A = nn.ModuleList([ConvAdjoint2dGabor(M, C, P, stride=s, order=order) for _ in range(K)])
         self.B = nn.ModuleList([ConvAdjoint2dGabor(M, C, P, stride=s, order=order) for _ in range(K)])
         self.D = self.B[0]                              # alias D to B[0], otherwise unused as z0 is zero
@@ -132,12 +132,32 @@ class GDLNet(nn.Module):
         w0    = torch.randn(order, M, C, 2)
         psi   = torch.randn(order, M, C)
 
-        for AB in [self.A, self.B]:
-            for k in range(K):
-                AB[k].alpha.data = alpha.clone()
-                AB[k].a.data     = a.clone()
-                AB[k].w0.data    = w0.clone()
-                AB[k].psi.data   = psi.clone()
+        for k in range(K):
+            self.A[k].alpha.data = alpha.clone()
+            self.A[k].a.data     = a.clone()
+            self.A[k].w0.data    = w0.clone()
+            self.A[k].psi.data   = psi.clone()
+            self.B[k].alpha.data = alpha.clone()
+            self.B[k].a.data     = a.clone()
+            self.B[k].w0.data    = w0.clone()
+            self.B[k].psi.data   = psi.clone()
+
+            # Gabor parameter sharing
+            if k > 0:
+                if "alpha" in shared:
+                    self.A[k].alpha = self.A[0].alpha
+                    # never share alpha (scale) with final dictionary (B[0])
+                    if k > 1:
+                        self.B[k].alpha = self.B[1].alpha
+                if "a_" in shared:
+                    self.A[k].a     = self.A[0].a
+                    self.B[k].a     = self.B[0].a
+                if "w0" in shared:
+                    self.A[k].w0    = self.A[0].w0
+                    self.B[k].w0    = self.B[0].w0
+                if "psi" in shared:
+                    self.A[k].psi   = self.A[0].psi
+                    self.B[k].psi   = self.B[0].psi
 
         # Don't bother running code if initializing trained model from state-dict
         if init:
@@ -153,8 +173,11 @@ class GDLNet(nn.Module):
 
             # spectral normalization (note: D is alised to B[0])
             for k in range(K):
-                self.A[k].alpha.data = self.A[k].alpha.data / np.sqrt(L)
-                self.B[k].alpha.data = self.B[k].alpha.data / np.sqrt(L)
+                self.A[k].alpha.data /= np.sqrt(L)
+                self.B[k].alpha.data /= np.sqrt(L)
+                if "alpha" in shared:
+                    self.B[1].alpha.data /= np.sqrt(L)
+                    break
 
         # set parameters
         self.K = K

@@ -1,13 +1,12 @@
 {
-"type": "GDLNet",
+"type": "CDLNet",
 "model": {
-	"K": 5,
-	"M": 16,
-	"P": 5,
-	"s": 1,
+	"K": 30,
+	"M": 169,
+	"P": 7,
+	"s": 2,
 	"C": 1,
-	"order": 3,
-	"t0": 1e-2,
+	"t0": 0,
 	"adaptive": false
 },
 "paths": {
@@ -26,14 +25,14 @@
 	"fit": {
 		"epochs": 20,
 		"noise_std": 25,
-		"val_freq": 2,
+		"val_freq": 5,
 		"save_freq": 5,
 		"backtrack_thresh": 2,
 		"verbose": true,
 		"clip_grad": 5e-2
 	},
 	"opt": {
-		"lr": 1e-3
+		"lr": 5e-4
 	},
 	"sched": {
 		"gamma": 0.95,
