@@ -1,10 +1,11 @@
 {
-"type": "DnCNN",
+"type": "GDLNet",
 "model": {
-	"K": 9,
-	"M": 32,
-	"Ci": 1,
-	"Co": 1
+	"adaptive": true,
+	"K": 5,
+	"M": 8,
+	"C": 3,
+	"P": 7
 },
 "paths": {
 	"save": "nets/test",
@@ -17,17 +18,18 @@
 		"trn_path_list": ["dataset/CBSD432"],
 		"val_path_list": ["dataset/Kodak"],
 		"tst_path_list": ["dataset/CBSD68"],
-		"load_color": false
+		"load_color": true
 	},
 	"fit": {
 		"epochs": 20,
-		"noise_std": 25,
+		"noise_std": [20,30],
 		"val_freq": 5,
-		"save_freq": 5,
+		"save_freq": 1,
 		"backtrack_thresh": 2,
 		"verbose": true,
 		"clip_grad": 5e-2,
-		"demosaic": false
+		"demosaic": true,
+		"mcsure": false
 	},
 	"opt": {
 		"lr": 1e-3

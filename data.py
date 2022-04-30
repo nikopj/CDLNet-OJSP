@@ -35,7 +35,7 @@ class MyDataset(data.Dataset):
 	def __getitem__(self, idx):
 		return self.transform(self.image_list[idx])
 
-def getDataLoader(dir_list, batch_size=1, load_color=False, crop_size=None, test=True):
+def get_data_loader(dir_list, batch_size=1, load_color=False, crop_size=None, test=True):
 	if test:
 		xfm = transforms.ToTensor()
 	else:
@@ -49,7 +49,7 @@ def getDataLoader(dir_list, batch_size=1, load_color=False, crop_size=None, test
 	                       drop_last  = (not test),
 	                       shuffle    = (not test))
 
-def getFitLoaders(trn_path_list =['CBSD432'],
+def get_fit_loaders(trn_path_list =['CBSD432'],
 	              val_path_list=['Kodak'],
 	              tst_path_list=['CBSD68'],
 	              crop_size  = 128,
@@ -59,16 +59,16 @@ def getFitLoaders(trn_path_list =['CBSD432'],
 	if type(batch_size) is int:
 		batch_size = [batch_size, 1, 1]
 
-	dataloaders = {'train': getDataLoader(trn_path_list, 
+	dataloaders = {'train': get_data_loader(trn_path_list, 
                                           batch_size[0], 
                                           load_color, 
                                           crop_size=crop_size, 
                                           test=False),
-	               'val':   getDataLoader(val_path_list, 
+	               'val':   get_data_loader(val_path_list, 
                                           batch_size[1], 
                                           load_color, 
                                           test=True),
-	               'test':  getDataLoader(tst_path_list, 
+	               'test':  get_data_loader(tst_path_list, 
                                           batch_size[2], 
                                           load_color, 
                                           test=True)}

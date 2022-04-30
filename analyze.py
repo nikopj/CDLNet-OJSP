@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-""" CDLNet/analyze.py
-Executuable for analyzing trained CDLNet models.
-Usage: $ ./analyze.py /path/to/args.json [--options] 
-see $ ./analyze.py --help for list of options.
-Note: blind testing requires option --blind=\"PCA\" or --blind=\"MAD\"
-"""
 import os, sys, json, copy, time
 from pprint import pprint
 import numpy as np
@@ -17,6 +11,7 @@ from tqdm import tqdm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import model
+import model.nle
 import utils, data, train
 
 import argparse
@@ -55,6 +50,7 @@ def main(model_args):
 
     with torch.no_grad():
         if ARGS.test is not None:
+            loader = data.get_data_loader([ARGS.test], load_color=ARGS.color, test=True)
             test(net, loader, noise_level=ARGS.noise_level, blind=ARGS.blind, device=device)
 
         if ARGS.dictionary:
@@ -64,64 +60,47 @@ def main(model_args):
             passthrough(net, ARGS.passthrough, ARGS.noise_level, blind=ARGS.blind, demosaic=ARGS.demosaic, device=device, color=ARGS.color)
 
         if ARGS.thresholds:
-            thresholds(net)
+            thresholds(net, noise_level=ARGS.noise_level)
 
         if ARGS.filters:
             filters(net, scale_each=True)
 
-def test(net, loader, noise_std=25, blind=False, device=torch.device('cpu')):
+def test(net, loader, noise_level=25, blind=False, device=torch.device('cpu')):
     """ Evaluate net on test-set.
     """
     print("--------- test ---------")
-    save_dir = args['paths']['save']
-    if net.adaptive and blind in [True, 'MAD', 'wvlt']:
-        fn = os.path.join(save_dir, "test_blindMAD.json")
-    elif net.adaptive and blind == 'PCA':
-        fn = os.path.join(save_dir, "test_blindPCA.json")
-    else:
-        fn = os.path.join(save_dir, "test.json")
-    if os.path.exists(fn):
-        fd = open(fn); log = json.load(fd); fd.close()
-    else:
-        log = {}
+    dset_name = os.path.basename(os.path.dirname(loader.dataset.root_dirs[0]))
+    fn = os.path.join(ARGS.save_dir, f"test_{dset_name}_{blind}.txt")
+
     if not type(noise_level) in [range, list, tuple]:
         noise_level = [noise_level]
-    dset = loader.dataset.root_dirs[0]
-    log[dset] = {}
-    tracker = {}
-    net.eval()
+
     for sigma in noise_level:
-        tracker[str(sigma)] = {'psnr': []}
-        tracker['times'] = []
-        log[dset][str(sigma)] = {}
         t = tqdm(iter(loader), desc=f"TEST-{sigma}", dynamic_ncols=True)
+        psnr = 0
         for itern, x in enumerate(t):
-            if x.shape[2] > x.shape[3]: # for more consistent timing
-                x = x.permute(0,1,3,2)
             x = x.to(device)
+            mask = utils.gen_bayer_mask(x) if ARGS.demosaic else 1
             y, s = utils.awgn(x, sigma)
-            with torch.no_grad():
-                t0 = time.time()
-                if net.adaptive:
-                    if blind:
-                        s = 255 * model.nle.noiseLevel(y, method=blind)
+            y = mask*y
+            if net.adaptive:
+                if blind is not None and blind is not False:
+                    sigma = 255 * model.nle.noise_level(y, method=blind)
+                    print(f"sigma_hat = {sigma.flatten().item():.3f}")
                 else:
-                    s = None
-                xhat, _ = net(y, s)
-                t1 = time.time()
-            tracker['times'].append(t1-t0)
-            psnr = -10*np.log10(torch.mean((x-xhat)**2).item())
-            tracker[str(sigma)]['psnr'].append(psnr)
-        log[dset][str(sigma)] = {}
-        log[dset][str(sigma)]['psnr-mean'] = np.mean(tracker[str(sigma)]['psnr'])
-        log[dset][str(sigma)]['psnr-std']  =  np.std(tracker[str(sigma)]['psnr'])
-        log[dset]['time-mean'] = np.mean(tracker['times'])
-        log[dset]['time-std']  = np.std(tracker['times'])
-    pprint(log)
-    if save:
-        print(f"Saving Testset log to {fn} ... ")
+                    print(f"using GT sigma.")
+            else:
+                sigma = None
+            xhat, _ = net(y, s, mask=mask)
+            psnr = psnr + -10*np.log10(torch.mean((x-xhat)**2).item())
+        psnr = psnr / itern
+        print(f"PSNR = {psnr:.3f}")
+
         with open(fn,'+a') as log_file:
-            log_file.write(json.dumps(log, indent=4, sort_keys=True))
+            log_file.write(f"{sigma}, {psnr:.3f}\n")
+
+    print(f"saved to file {fn}")
+    print("done.")
 
 def thresholds(net, noise_level=25):
     print("--------- thresholds ---------")
@@ -153,21 +132,27 @@ def filters(net, scale_each=False):
     save_dir = os.path.join(ARGS.save_dir, "filters")
     os.makedirs(save_dir, exist_ok=True)
 
-    D = net.D.weight.cpu()
-    if net.s == 1:
+    if type(net) == model.net.GDLNet:
+        get_filter = lambda C: C.get_filter()
+    elif type(net) == model.net.CDLNet:
+        get_filter = lambda C: C.weight.data
+    else:
+        raise NotImplementedError
+
+    D = get_filter(net.D)
+    if type(net) == model.net.CDLNet and net.s == 1:
         D = D.permute(1,0,2,3)
     n = int(np.ceil(np.sqrt(D.shape[0])))
 
     # store filters in these lists
-    AL = []
-    BL = []
+    AL = []; BL = []
     
     # get maximum over all filters
     mmax = 0
     for k in range(net.K):
-        AL.append(net.A[k].weight.cpu())
-        B = net.B[k].weight.cpu()
-        if net.s == 1:
+        AL.append(get_filter(net.A[k]))
+        B = get_filter(net.B[k])
+        if type(net) == model.net.CDLNet and net.s == 1:
             B = B.permute(1,0,2,3)
         if k == 0:
             B = 0*B
@@ -181,33 +166,22 @@ def filters(net, scale_each=False):
             mmax = bmax
 
     for k in range(net.K):
-        if scale_each:
-            #vr = (AL[k].min(), AL[k].max())
-            vr = None
-        else:
-            vr = (-mmax,mmax)
+        vr = None if scale_each else (-mmax,mmax)
         Ag = make_grid(AL[k], nrow=n, padding=2, scale_each=scale_each, normalize=True, value_range=vr)
 
         if k==0:
             vr = (-1,1)
         else:
-            if scale_each:
-                #vr = (BL[k].min(), BL[k].max())
-                vr = None
-            else:
-                vr = (-mmax,mmax)
+            vr = None if scale_each else (-mmax,mmax)
         Bg = make_grid(BL[k], nrow=n, padding=2, scale_each=scale_each, normalize=True, value_range=vr)
 
         fn = os.path.join(save_dir, f"AB{k:02d}_{scale_each}.png")
         print(f"Saving {fn} ...")
         save_image([Ag,Bg], fn, nrow=2, padding=5)
 
-    print(f"mmax={mmax:.3f}")
-
     fn = os.path.join(save_dir, f"D{k:02d}_{scale_each}.png")
     print(f"Saving {fn} ...")
     save_image(D, fn, nrow=n, scale_each=scale_each, normalize=True)
-
     print("done.")
 
 def dictionary(net):
@@ -276,27 +250,16 @@ def passthrough(net, img_path, noise_std, device=torch.device('cpu'), blind=Fals
             fn = os.path.join(save_dir, f"csc{i:02d}.png")
             print(f"Saving csc{i:02d} at {fn} ...")
             save_image(csc, fn, nrow=n, padding=10, scale_each=False, normalize=True, value_range=(0, csc.max()))
-
-            if i > 0 and i < net.K-1:
-                Bz = net.B[i+1](xz) 
-                fn = os.path.join(save_dir, f"Bz{i:02d}.png")
-                print(f"Saving Bz{i:02d} at {fn} ...")
-                save_image(Bz, fn, normalize=True)
-
-                res = Bz - yp
-                fn = os.path.join(save_dir, f"res{i:02d}.png")
-                print(f"Saving res{i:02d} at {fn} ...")
-                save_image(res, fn, normalize=True)
-
-            if i== net.K-1:
-                Dz = net.D(xz)
-                fn = os.path.join(save_dir, f"Dz.png")
-                print(f"Saving Dz at {fn} ...")
-                save_image(Dz, fn, normalize=True)
     
     xhat = xz
     psnr = -10*np.log10(torch.mean((x-xhat)**2).item())
     print(f"PSNR = {psnr:.2f}")
+
+    if ARGS.save:
+        fn = os.path.join(save_dir, f"compare.png")
+        print(f"Saving y, xhat, x at {fn} ...")
+        save_image(torch.cat([y, xhat, x]), fn, nrow=3, scale_each=False, normalize=False)
+    print("done.")
 
 if __name__ == "__main__":
     """ Load arguments from json file and command line and pass to main.
