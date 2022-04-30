@@ -1,31 +1,31 @@
 {
 "type": "DnCNN",
 "model": {
-	"K": 9,
-	"M": 32,
+	"K": 12,
+	"M": 26,
 	"Ci": 1,
 	"Co": 1
 },
 "paths": {
-	"save": "nets/test",
+	"save": "nets/DnCNN-small_s25d",
 	"ckpt": null
 },
 "train": {
 	"loaders": {
-		"batch_size": 1,
-		"crop_size": 64,
+		"batch_size": 10,
+		"crop_size": 128,
 		"trn_path_list": ["dataset/CBSD432"],
 		"val_path_list": ["dataset/Kodak"],
 		"tst_path_list": ["dataset/CBSD68"],
 		"load_color": false
 	},
 	"fit": {
-		"epochs": 20,
+		"epochs": 6000,
 		"noise_std": 25,
 		"val_freq": 5,
 		"save_freq": 5,
 		"backtrack_thresh": 2,
-		"verbose": true,
+		"verbose": false,
 		"clip_grad": 5e-2,
 		"demosaic": false
 	},
