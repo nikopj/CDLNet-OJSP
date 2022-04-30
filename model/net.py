@@ -23,7 +23,7 @@ class CDLNet(nn.Module):
                  P = 7,            # square filter side length
                  s = 1,            # stride of convolutions
                  C = 1,            # num. input channels
-                 t0 = 1e-2,        # initial threshold
+                 t0 = 0,        # initial threshold
                  adaptive = False, # noise-adaptive thresholds
                  init = True):     # False -> use power-method for weight init
         super(CDLNet, self).__init__()
@@ -113,7 +113,7 @@ class GDLNet(nn.Module):
                  P = 7,            # square filter side length
                  s = 1,            # stride of convolutions
                  C = 1,            # num. input channels
-                 t0 = 1e-2,        # initial threshold
+                 t0 = 0,           # initial threshold
                  order = 1,        # mixture of gabor order
                  adaptive = False, # noise-adaptive thresholds
                  shared = "",      # which gabor parameters to share (e.g. "a_psi_w0_alpha")

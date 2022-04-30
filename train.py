@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from model.net import CDLNet, GDLNet, DnCNN, FFDNet
-from data import getFitLoaders
+from data import get_fit_loaders
 from utils import awgn, gen_bayer_mask
 
 def main(args):
@@ -16,7 +16,7 @@ def main(args):
     device = torch.device("cuda:0" if ngpu > 0 else "cpu")
 
     model_args, train_args, paths = [args[item] for item in ['model','train','paths']]
-    loaders = getFitLoaders(**train_args['loaders'])
+    loaders = get_fit_loaders(**train_args['loaders'])
     net, opt, sched, epoch0 = init_model(args, device=device)
 
     fit(net, 
@@ -42,6 +42,7 @@ def fit(net, opt, loaders,
         val_freq  = 1,
         save_freq = 1,
         epoch_fun = None,
+        mcsure = False,
         backtrack_thresh = 1):
     """ fit net to training data.
     """
@@ -81,7 +82,17 @@ def fit(net, opt, loaders,
 
                 with torch.set_grad_enabled(phase == 'train'):
                     batch_hat, _ = net(obsrv_batch, sigma_n, mask=mask)
-                    loss = torch.mean((batch - batch_hat)**2)
+
+                    # supervised or unsupervised (MCSURE) loss during training
+                    if mcsure and phase == "train":
+                        h = 1e-3
+                        b = torch.rand_like(obsrv_batch)
+                        batch_hat_b, _ = net(obsrv_batch.clone() + h*b, sigma_n, mask=mask)
+                        # assume you have a good estimator for sigma_n
+                        div = 2.0*((sigma_n/255.0)**2)*torch.mean(b*(batch_hat_b-batch_hat)) / h
+                        loss = torch.mean((obsrv_batch - batch_hat)**2) + div
+                    else:
+                        loss = torch.mean((batch - batch_hat)**2)
 
                     if phase == 'train':
                         loss.backward()
@@ -105,8 +116,8 @@ def fit(net, opt, loaders,
             elif (psnr + backtrack_thresh < top_psnr[phase]) or np.isnan(loss) or np.isinf(loss):
                 break
 
-            with open(os.path.join(save_dir, f'{phase}.psnr'),'a') as psnr_file:
-                psnr_file.write(f'{psnr:.3f}  ')
+            with open(os.path.join(save_dir, f'{phase}.txt'),'a') as psnr_file:
+                psnr_file.write(f'{psnr:.3f}, ')
 
         if (psnr + backtrack_thresh < top_psnr[phase]) or np.isnan(loss) or np.isinf(loss):
             ckpt_path = os.path.join(save_dir, 'net.ckpt')
@@ -203,7 +214,7 @@ def init_model(args, device=torch.device("cpu")):
     total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
     print(f"Total Number of Parameters: {total_params:,}")
 
-    print(f"Initializing {paths['save']} ...")
+    print(f"Using {paths['save']} ...")
     os.makedirs(paths['save'], exist_ok=True)
     return net, opt, sched, epoch0
 
