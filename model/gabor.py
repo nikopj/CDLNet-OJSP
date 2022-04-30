@@ -21,7 +21,7 @@ def gabor_kernel(a, w0, psi, ks):
     x = torch.stack(torch.meshgrid(i,i, indexing='ij'), dim=2)[None,None,...]
 
     # x0 spatial center
-    x0 = torch.tensor([(ks-1)/2,(ks-1)/2])[None,None,None,None,None,:]
+    x0 = torch.tensor([(ks-1)/2,(ks-1)/2], device=a.device)[None,None,None,None,None,:]
 
     h = torch.exp( -torch.sum((a*(x-x0))**2, dim=-1) ) * \
         torch.cos(torch.sum(w0*(x-x0), dim=-1) + psi)

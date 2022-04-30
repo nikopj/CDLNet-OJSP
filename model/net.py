@@ -45,7 +45,7 @@ class CDLNet(nn.Module):
             print("Running power-method on initial dictionary...")
             with torch.no_grad():
                 DDt = lambda x: self.D(self.A[0](x))
-                L = power_method(DDt, torch.rand(1,C,128,128), num_iter=500, verbose=False)[0]
+                L = power_method(DDt, torch.rand(1,C,128,128), num_iter=200, verbose=False)[0]
                 print(f"Done. L={L:.3e}.")
 
                 if L < 0:
@@ -164,7 +164,7 @@ class GDLNet(nn.Module):
             print("Running power-method on initial dictionary...")
             with torch.no_grad():
                 DDt = lambda x: self.D(self.A[0].T(x))
-                L = power_method(DDt, torch.rand(1,C,128,128), num_iter=500, verbose=False)[0]
+                L = power_method(DDt, torch.rand(1,C,128,128), num_iter=200, verbose=False)[0]
                 print(f"Done. L={L:.3e}.")
 
                 if L < 0:

@@ -89,7 +89,7 @@ def fit(net, opt, loaders,
                         b = torch.rand_like(obsrv_batch)
                         batch_hat_b, _ = net(obsrv_batch.clone() + h*b, sigma_n, mask=mask)
                         # assume you have a good estimator for sigma_n
-                        div = 2.0*((sigma_n/255.0)**2)*torch.mean(b*(batch_hat_b-batch_hat)) / h
+                        div = 2.0*torch.mean(((sigma_n/255.0)**2)*b*(batch_hat_b-batch_hat)) / h
                         loss = torch.mean((obsrv_batch - batch_hat)**2) + div
                     else:
                         loss = torch.mean((batch - batch_hat)**2)

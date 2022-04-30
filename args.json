@@ -1,15 +1,17 @@
 {
 "type": "GDLNet",
 "model": {
-	"adaptive": false,
+	"adaptive": true,
 	"K": 30,
 	"M": 169,
 	"C": 3,
 	"P": 11,
-	"order": 3
+	"s": 2,
+	"order": 3,
+	"shared": ""
 },
 "paths": {
-	"save": "nets/test",
+	"save": "trained_nets/cGDLNet-s2030b",
 	"ckpt": null
 },
 "train": {
@@ -23,13 +25,13 @@
 	},
 	"fit": {
 		"epochs": 6000,
-		"noise_std": 25,
-		"val_freq": 5,
+		"noise_std": [20,30],
+		"val_freq": 50,
 		"save_freq": 1,
 		"backtrack_thresh": 2,
-		"verbose": false,
+		"verbose": true,
 		"clip_grad": 5e-2,
-		"demosaic": true,
+		"demosaic": false,
 		"mcsure": false
 	},
 	"opt": {
