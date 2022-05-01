@@ -76,6 +76,7 @@ def test(net, loader, noise_level=25, blind=False, device=torch.device('cpu')):
         noise_level = [noise_level]
 
     for sigma in noise_level:
+        print(sigma)
         t = tqdm(iter(loader), desc=f"TEST-{sigma}", dynamic_ncols=True)
         psnr = 0
         for itern, x in enumerate(t):
@@ -85,12 +86,12 @@ def test(net, loader, noise_level=25, blind=False, device=torch.device('cpu')):
             y = mask*y
             if net.adaptive:
                 if blind is not None and blind is not False:
-                    sigma = 255 * model.nle.noise_level(y, method=blind)
+                    s = 255 * model.nle.noise_level(y, method=blind)
                     print(f"sigma_hat = {sigma.flatten().item():.3f}")
                 else:
                     print(f"using GT sigma.")
             else:
-                sigma = None
+                s = None
             xhat, _ = net(y, s, mask=mask)
             psnr = psnr + -10*np.log10(torch.mean((x-xhat)**2).item())
         psnr = psnr / itern
@@ -140,8 +141,6 @@ def filters(net, scale_each=False):
         raise NotImplementedError
 
     D = get_filter(net.D)
-    if type(net) == model.net.CDLNet and net.s == 1:
-        D = D.permute(1,0,2,3)
     n = int(np.ceil(np.sqrt(D.shape[0])))
 
     # store filters in these lists
@@ -152,8 +151,6 @@ def filters(net, scale_each=False):
     for k in range(net.K):
         AL.append(get_filter(net.A[k]))
         B = get_filter(net.B[k])
-        if type(net) == model.net.CDLNet and net.s == 1:
-            B = B.permute(1,0,2,3)
         if k == 0:
             B = 0*B
         BL.append(B)
@@ -189,10 +186,8 @@ def dictionary(net):
     """
     print("--------- dictionary ---------")
     if type(net) is model.net.CDLNet:
-        if net.s > 1:
-            D = net.D.weight.cpu()
-        else:
-            D = net.D.weight.cpu().permute(1,0,2,3)
+        #D = net.D.weight.cpu().permute(1,0,2,3)
+        D = net.D.weight.cpu()
     elif type(net) is model.net.GDLNet:
         D = net.D.get_filter().cpu()
     else:
@@ -202,6 +197,7 @@ def dictionary(net):
 
     fn = os.path.join(ARGS.save_dir, "D_learned.png")
     print(f"Saving learned dictionary to {fn} ...")
+    print(D.shape)
     save_image(D, fn, nrow=n, padding=2, scale_each=True, normalize=True)
 
     # plot frequency response of effective dictionary
@@ -216,10 +212,8 @@ def passthrough(net, img_path, noise_std, device=torch.device('cpu'), blind=Fals
     """
     print("--------- passthrough ---------")
     img_name = os.path.splitext(os.path.basename(img_path))[0]
-
-    if ARGS.save:
-        save_dir = os.path.join(ARGS.save_dir, f"passthrough_{img_name}")
-        os.makedirs(save_dir, exist_ok=True)
+    save_dir = os.path.join(ARGS.save_dir, f"passthrough_{img_name}")
+    os.makedirs(save_dir, exist_ok=True)
 
     print(f"using {img_path}...")
     x = utils.img_load(img_path, gray=not color).to(device)
@@ -250,15 +244,14 @@ def passthrough(net, img_path, noise_std, device=torch.device('cpu'), blind=Fals
             fn = os.path.join(save_dir, f"csc{i:02d}.png")
             print(f"Saving csc{i:02d} at {fn} ...")
             save_image(csc, fn, nrow=n, padding=10, scale_each=False, normalize=True, value_range=(0, csc.max()))
-    
+
     xhat = xz
     psnr = -10*np.log10(torch.mean((x-xhat)**2).item())
     print(f"PSNR = {psnr:.2f}")
 
-    if ARGS.save:
-        fn = os.path.join(save_dir, f"compare.png")
-        print(f"Saving y, xhat, x at {fn} ...")
-        save_image(torch.cat([y, xhat, x]), fn, nrow=3, scale_each=False, normalize=False)
+    fn = os.path.join(save_dir, f"compare.png")
+    print(f"Saving y, xhat, x at {fn} ...")
+    save_image(torch.cat([y, xhat, x]), fn, nrow=3, scale_each=False, normalize=False)
     print("done.")
 
 if __name__ == "__main__":
