@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import os, sys, json, copy, time
 from pprint import pprint
+from tqdm import tqdm
 import numpy as np
 from numpy.fft import fftshift, fft2
-import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image, make_grid
-from tqdm import tqdm
+import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import model
@@ -94,7 +94,7 @@ def test(net, loader, noise_level=25, blind=False, device=torch.device('cpu')):
                 s = None
             xhat, _ = net(y, s, mask=mask)
             psnr = psnr + -10*np.log10(torch.mean((x-xhat)**2).item())
-        psnr = psnr / itern
+        psnr = psnr / (itern+1)
         print(f"PSNR = {psnr:.3f}")
 
         with open(fn,'+a') as log_file:

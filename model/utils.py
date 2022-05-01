@@ -11,7 +11,7 @@ def pre_process(x, stride, mask=1):
         xmean = x.sum(dim=(1,2,3), keepdim=True) / mask.sum(dim=(1,2,3), keepdim=True)
     else:
         xmean = x.mean(dim=(1,2,3), keepdim=True)
-    x = x - xmean
+    x = mask*(x - xmean)
     params.append(xmean)
     # pad signal for stride
     pad = calc_pad_2D(*x.shape[2:], stride)
