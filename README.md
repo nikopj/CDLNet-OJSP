@@ -26,6 +26,8 @@ where the checkpoint referenced in `args['paths']['ckpt']` will be loaded.
 Additional analysis of trained models can be performed with other command-line
 options (see `$ python analyze.py -h`).
 
+[website](https://nikopj.github.io/projects/dcdl), [supplementary material](https://nikopj.github.io/notes/cdlnet_supp)
+
 ## Publications
 
 If you find this code/work useful, please cite us:
