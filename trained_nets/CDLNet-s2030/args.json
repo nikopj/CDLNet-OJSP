@@ -1,0 +1,52 @@
+{
+    "model": {
+        "C": 1,
+        "K": 30,
+        "M": 169,
+        "P": 7,
+        "adaptive": true,
+        "s": 2
+    },
+    "paths": {
+        "ckpt": "trained_nets/CDLNet-s2030/net.ckpt",
+        "save": "trained_nets/CDLNet-s2030"
+    },
+    "train": {
+        "fit": {
+            "backtrack_thresh": 2,
+            "clip_grad": 0.05,
+            "demosaic": false,
+            "epochs": 6000,
+            "mcsure": false,
+            "noise_std": [
+                20,
+                30
+            ],
+            "save_freq": 1,
+            "val_freq": 50,
+            "verbose": true
+        },
+        "loaders": {
+            "batch_size": 10,
+            "crop_size": 128,
+            "load_color": false,
+            "trn_path_list": [
+                "dataset/CBSD432"
+            ],
+            "tst_path_list": [
+                "dataset/CBSD68"
+            ],
+            "val_path_list": [
+                "dataset/Kodak"
+            ]
+        },
+        "opt": {
+            "lr": 0.001
+        },
+        "sched": {
+            "gamma": 0.95,
+            "step_size": 50
+        }
+    },
+    "type": "CDLNet"
+}

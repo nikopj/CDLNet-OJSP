@@ -1,5 +1,4 @@
 __pycache__
-trained_nets/
 job.sh
 slurm/
 manuscript/
