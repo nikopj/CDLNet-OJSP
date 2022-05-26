@@ -39,9 +39,9 @@ author={Janjušević, Nikola and Khalilian-Gourtani, Amirhossein and Wang, Yao},
 journal={IEEE Open Journal of Signal Processing}, 
 title={{CDLNet}: Noise-Adaptive Convolutional Dictionary Learning Network for Blind Denoising and Demosaicing}, 
 year={2022},
-volume={},
+volume={3},
 number={},
-pages={1-1},
+pages={196-211},
 doi={10.1109/OJSP.2022.3172842}
 }
 ```
