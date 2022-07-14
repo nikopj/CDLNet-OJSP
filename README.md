@@ -3,7 +3,7 @@
 Code for the papers, 
 - [*CDLNet: Noise-Adaptive Convolutional Dictionary Learning
 Network for Blind Denoising and Demosaicing*](https://ieeexplore.ieee.org/document/9769957/).
-- [*Gabor is Enough: Interpretable Deep Denoising with a Gabor Synthesis Dictionary Prior*](https://arxiv.org/abs/2204.11146)
+- [*Gabor is Enough: Interpretable Deep Denoising with a Gabor Synthesis Dictionary Prior*](https://arxiv.org/abs/2204.11146), [[ieee](https://ieeexplore.ieee.org/document/9816313)]
 
 ## Workflow
 Install packages listed in `reqiurements.txt` to replicate the environment.
@@ -46,12 +46,14 @@ doi={10.1109/OJSP.2022.3172842}
 }
 ```
 ```
-@misc{janjusevicGDLNet2022,
-doi = {10.48550/ARXIV.2204.11146},
-url = {https://arxiv.org/abs/2204.11146},
-author = {Janjušević, Nikola and Khalilian-Gourtani, Amirhossein and Wang, Yao},
-title = {Gabor is Enough: Interpretable Deep Denoising with a Gabor Synthesis Dictionary Prior},
-publisher = {arXiv},
-year = {2022},
+@INPROCEEDINGS{janjusevicGDLNet2022,
+author={Janjušević, Nikola and Khalilian-Gourtani, Amirhossein and Wang, Yao},
+booktitle={2022 IEEE 14th Image, Video, and Multidimensional Signal Processing Workshop (IVMSP)}, 
+title={Gabor is Enough: Interpretable Deep Denoising with a Gabor Synthesis Dictionary Prior}, 
+year={2022},
+volume={},
+number={},
+pages={1-5},
+doi={10.1109/IVMSP54334.2022.9816313}
 }
 ```
