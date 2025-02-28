@@ -3,7 +3,7 @@
 MRI via Learned Group-Sparsity and Circulant
 Attention*](https://ieeexplore.ieee.org/document/10874214), in IEEE
 Transactions on Computational Imaging 2025 [(preprint
-available)](https://arxiv.org/abs/2407.18967), [github repo](github.com/nikopj/GroupCDL) !!!
+available)](https://arxiv.org/abs/2407.18967), [github repo](https://www.github.com/nikopj/GroupCDL) !!!
 
 Code for the papers, 
 - [*CDLNet: Noise-Adaptive Convolutional Dictionary Learning
